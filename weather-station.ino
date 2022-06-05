@@ -1,5 +1,5 @@
 #include <Wire.h>                                                  
-#include "DHT.h"
+#include <DHT.h>
 #include "Seeed_BMP280.h"
 #include <WiFiMulti.h>
 WiFiMulti wifiMulti;
@@ -13,10 +13,10 @@ WiFiMulti wifiMulti;
 #define INFLUXDB_URL "<INFLUXDB_URL>"                                                                                     //InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 #define INFLUXDB_TOKEN "<INFLUXDB_TOKEN>"                                                                                 //InfluxDB v2 server or cloud API token (Use: InfluxDB UI -> Data -> API Tokens -> <select token>)
 #define INFLUXDB_ORG "<INFLUXDB_ORG>"                                                                                     //InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-#define INFLUXDB_BUCKET "<INFLUXDB_BUCKET>"                                                                               //InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-#define TZ_INFO "AEDT+11"                                                                                                 //InfluxDB v2 timezone
+#define INFLUXDB_BUCKET "weather-station"                                                                               //InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
+#define TZ_INFO "BRST+3BRDT+2,M10.3.0,M2.3.0"                                                                                                 //InfluxDB v2 timezone
 
-DHT dht(4,DHT11);                                                   //DHT and BMP sensor parameters
+DHT dht(15,DHT11);                                                   //DHT and BMP sensor parameters
 BMP280 bmp280;
 
 int temp = 0;                                                       //Variables to store sensor readings
@@ -31,8 +31,8 @@ void setup() {
   Serial.begin(115200);                                             //Start serial communication
   
   dht.begin();                                                      //Connect to the DHT Sensor
-  if(!bmp280.init())                                                //Connect to pressure sensor
-    Serial.println("bmp280 init error!");
+//  if(!bmp280.init())                                                //Connect to pressure sensor
+//    Serial.println("bmp280 init error!");
 
   WiFi.mode(WIFI_STA);                                              //Setup wifi connection
   wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
@@ -62,13 +62,13 @@ void setup() {
 void loop() {                                                         //Loop function 
   temp = dht.readTemperature();                                      //Record temperature
   humid = dht.readHumidity();                                        //Record temperature
-  pressure = bmp280.getPressure()/100;                               //Record pressure
+//  pressure = bmp280.getPressure()/100;                               //Record pressure
 
   sensor.clearFields();                                              //Clear fields for reusing the point. Tags will remain untouched
 
   sensor.addField("temperature", temp);                              // Store measured value into point
   sensor.addField("humidity", humid);                                // Store measured value into point
-  sensor.addField("pressure", pressure);                             // Store measured value into point
+//  sensor.addField("pressure", pressure);                             // Store measured value into point
 
     
   if (wifiMulti.run() != WL_CONNECTED)                               //Check WiFi connection and reconnect if needed
@@ -83,7 +83,7 @@ void loop() {                                                         //Loop fun
   Serial.println(temp);
   Serial.print("Humidity: ");
   Serial.println(humid);
-  Serial.print("Pressure: ");
-  Serial.println(pressure);
-  delay(60000);                                                      //Wait 60 seconds
+//  Serial.print("Pressure: ");
+//  Serial.println(pressure);
+  delay(10000);                                                      //Wait 60 seconds
 }
