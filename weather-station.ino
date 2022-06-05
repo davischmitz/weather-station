@@ -27,8 +27,7 @@ InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKE
 
 Point sensor("weather");                                            //Data point
 
-void setup() 
-{
+void setup() {
   Serial.begin(115200);                                             //Start serial communication
   
   dht.begin();                                                      //Connect to the DHT Sensor
@@ -39,8 +38,7 @@ void setup()
   wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
 
   Serial.print("Connecting to wifi");                               //Connect to WiFi
-  while (wifiMulti.run() != WL_CONNECTED) 
-  {
+  while (wifiMulti.run() != WL_CONNECTED) {
     Serial.print(".");
     delay(100);
   }
@@ -51,20 +49,17 @@ void setup()
 
   timeSync(TZ_INFO, "pool.ntp.org", "time.nis.gov");                 //Accurate time is necessary for certificate validation and writing in batches
 
-  if (client.validateConnection())                                   //Check server connection
-  {
+  if (client.validateConnection()) {                                 //Check server connection
     Serial.print("Connected to InfluxDB: ");
     Serial.println(client.getServerUrl());
   } 
-  else 
-  {
+  else {
     Serial.print("InfluxDB connection failed: ");
     Serial.println(client.getLastErrorMessage());
   }
 }
 
-void loop()                                                          //Loop function
-{
+void loop() {                                                         //Loop function 
   temp = dht.readTemperature();                                      //Record temperature
   humid = dht.readHumidity();                                        //Record temperature
   pressure = bmp280.getPressure()/100;                               //Record pressure
@@ -79,8 +74,7 @@ void loop()                                                          //Loop func
   if (wifiMulti.run() != WL_CONNECTED)                               //Check WiFi connection and reconnect if needed
     Serial.println("Wifi connection lost");
 
-  if (!client.writePoint(sensor))                                    //Write data point
-  {
+  if (!client.writePoint(sensor)) {                                   //Write data point
     Serial.print("InfluxDB write failed: ");
     Serial.println(client.getLastErrorMessage());
   }
