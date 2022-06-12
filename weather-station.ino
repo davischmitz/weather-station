@@ -1,18 +1,13 @@
 #include <Wire.h>                                                  
 #include <DHT.h>
-#include <Adafruit_BMP085.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BMP280.h>
 #include <WiFiMulti.h>
 WiFiMulti wifiMulti;
 #define DEVICE "ESP32"
 
 #include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
-
-#if CONFIG_FREERTOS_UNICORE
-#define ARDUINO_RUNNING_CORE 0
-#else
-#define ARDUINO_RUNNING_CORE 1
-#endif
 
 #define WIFI_SSID "<Network Name>"                                                                                        
 #define WIFI_PASSWORD "<Network Password>"                                                                               
@@ -24,9 +19,10 @@ WiFiMulti wifiMulti;
 
 #define DHT_PIN 15
 #define DHT_TYPE DHT11
+#define BMP280_ADDRESS 0x76
 
-DHT dht(DHT_PIN, DHT_TYPE);                                                   
-Adafruit_BMP085 bmp180;
+//DHT dht(DHT_PIN, DHT_TYPE);                                                   
+Adafruit_BMP280 bmp280;
 
 SemaphoreHandle_t xMutex1;
 QueueHandle_t temperatureQueue;
@@ -35,6 +31,8 @@ QueueHandle_t pressureQueue;
 
 void TaskReadSensors( void *pvParameters );
 
+TaskHandle_t xTaskReadSensorsHandle;
+
 InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);                 
 
 Point sensor("weather");
@@ -42,8 +40,8 @@ Point sensor("weather");
 void setup() {
   Serial.begin(115200);                                             
   
-  dht.begin();                                                      
-  if(!bmp180.begin()) {                                             
+//  dht.begin();                                                      
+  if(!bmp280.begin(BMP280_ADDRESS)) {                                             
     Serial.println("bmp280 init error!");
   }
 
@@ -76,39 +74,41 @@ void setup() {
   humidityQueue = xQueueCreate(10, sizeof(int));
   pressureQueue = xQueueCreate(10, sizeof(int));
 
-  xTaskCreatePinnedToCore(
+  xTaskCreate(
     TaskReadSensors
     ,  "TaskReadSensors"
-    ,  1024  
+    ,  1048  
     ,  NULL
     ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL
-    ,  ARDUINO_RUNNING_CORE);
+    ,  &xTaskReadSensorsHandle);
 }
 
 void loop() {    
   sensor.clearFields();   
 
-  int temp = 0;
-  int humid = 0;
-  int pressure = 0;                           
+  float temp = 0;
+  float humid = 0;
+  float pressure = 0;               
 
   if (xQueueReceive(temperatureQueue, &temp, portMAX_DELAY) == pdPASS) {
     sensor.addField("temperature", temp);   
-    Serial.print("Temp: ");                                            
-    Serial.println(temp);        
+    Serial.print(F("Temperature = "));
+    Serial.print(temp);
+    Serial.println(" *C");  
   }
   
-  if (xQueueReceive(humidityQueue, &humid, portMAX_DELAY) == pdPASS) {
-    sensor.addField("humidity", humid); 
-    Serial.print("Humidity: ");
-    Serial.println(humid);
-  }
+//  if (xQueueReceive(humidityQueue, &humid, portMAX_DELAY) == pdPASS) {
+//    sensor.addField("humidity", humid); 
+//    Serial.print(F("Humidity: "));
+//    Serial.print(humid);
+//    Serial.println(" %");  
+//  }
       
   if (xQueueReceive(pressureQueue, &pressure, portMAX_DELAY) == pdPASS) {
     sensor.addField("pressure", pressure);
-    Serial.print("Pressure: ");
-    Serial.println(pressure); 
+    Serial.print(F("Pressure: "));
+    Serial.print(pressure); 
+    Serial.println(" hPa");  
   }
     
   if (wifiMulti.run() != WL_CONNECTED)                               
@@ -132,19 +132,15 @@ void TaskReadSensors(void *pvParameters)
 
   for (;;)
   {
-//    if (xSemaphoreTake(xMutex1, 100) == pdTRUE) {
-     
-      int temp = dht.readTemperature();                                      
-      int humid = dht.readHumidity();                                        
-      int pressure = bmp180.readPressure() / 100; 
+    float temp = bmp280.readTemperature();                                      
+//    float humid = dht.readHumidity();                                        
+    float pressure =  bmp280.readPressure() / 100;
+    float altitude = bmp280.readAltitude();
 
-      xQueueSend(temperatureQueue, &temp, portMAX_DELAY);
-      xQueueSend(humidityQueue, &humid, portMAX_DELAY);
-      xQueueSend(pressureQueue, &pressure, portMAX_DELAY);
+    xQueueSend(temperatureQueue, &temp, portMAX_DELAY);
+//    xQueueSend(humidityQueue, &humid, portMAX_DELAY);
+    xQueueSend(pressureQueue, &pressure, portMAX_DELAY);
 
-//      xSemaphoreGive(xMutex1);
-//    }
-
-    vTaskDelay(10); 
+    vTaskDelay(100); 
   }
 }
